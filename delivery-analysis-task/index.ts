@@ -1,7 +1,7 @@
 import os = require('os');
 import url = require('url');
 import tl = require('vsts-task-lib/task');
-import { buildKlaCommand, setAgentTempDir, setAgentToolsDir, downloadInstallKla, runKiuwanLocalAnalyzer, getKiuwanRetMsg, auditFailed, getLastAnalysisResults, saveKiuwanResults, uploadKiuwanResults, noFilesToAnalyze, isBuild } from 'kiuwan-common/utils';
+import * as kutils from '../kiuwan-common/utils';
 import { _exist } from 'vsts-task-lib/internal';
 import { debug } from 'vsts-task-tool-lib';
 import { isUndefined } from 'util';
@@ -10,16 +10,16 @@ var osPlat: string = os.platform();
 var agentHomeDir = tl.getVariable('Agent.HomeDirectory');
 var agentTempDir = tl.getVariable('Agent.TempDirectory');
 if (!agentTempDir) {
-    agentTempDir = setAgentTempDir(agentHomeDir, osPlat);
+    agentTempDir = kutils.setAgentTempDir(agentHomeDir, osPlat);
 }
 var agentToolsDir = tl.getVariable('Agent.ToolsDirectory');
 if (!agentToolsDir) {
-    agentToolsDir = setAgentToolsDir(agentHomeDir, osPlat);
+    agentToolsDir = kutils.setAgentToolsDir(agentHomeDir, osPlat);
 }
 const toolName = 'KiuwanLocalAnalyzer';
 const toolVersion = '1.0.0';
 
-const inBuild = isBuild();
+const inBuild = kutils.isBuild();
 console.log(`[KW] in build?: ${inBuild}`);
 
 if (inBuild) {
@@ -226,10 +226,10 @@ async function run() {
         // We treat al agents equal now:
         // Check if the KLA is already installed in the Agent tools directory from a previosu task run
         // It will download and install it in the Agent Tools directory if not found
-        let klaInstallPath = await downloadInstallKla(kiuwanConnection, toolName, toolVersion, osPlat);
+        let klaInstallPath = await kutils.downloadInstallKla(kiuwanConnection, toolName, toolVersion, osPlat);
 
         // Get the appropriate kla command depending on the platform
-        kla = await buildKlaCommand(klaInstallPath, osPlat);
+        kla = await kutils.buildKlaCommand(klaInstallPath, osPlat);
 
         let advancedArgs = "";
         let overrideDotKiuwan: boolean = tl.getBoolInput('overridedotkiuwan');
@@ -274,30 +274,30 @@ async function run() {
         console.log('Running Kiuwan analysis');
 
         console.log(`${kla} ${klaArgs}`);
-        let kiuwanRetCode: Number = await runKiuwanLocalAnalyzer(kla, klaArgs);
+        let kiuwanRetCode: Number = await kutils.runKiuwanLocalAnalyzer(kla, klaArgs);
 
-        let kiuwanMsg: string = getKiuwanRetMsg(kiuwanRetCode);
+        let kiuwanMsg: string = kutils.getKiuwanRetMsg(kiuwanRetCode);
 
-        if (kiuwanRetCode === 0 || auditFailed(kiuwanRetCode)) {
+        if (kiuwanRetCode === 0 || kutils.auditFailed(kiuwanRetCode)) {
             let kiuwanEndpoint = `/saas/rest/v1/apps/${projectName}/deliveries?changeRequest=${changeRequest}&label=${deliveryLabel}`;
-            let kiuwanDeliveryResult = await getLastAnalysisResults(kiuwanUrl, kiuwanUser, kiuwanPasswd, kiuwanDomainId, kiuwanEndpoint);
+            let kiuwanDeliveryResult = await kutils.getLastAnalysisResults(kiuwanUrl, kiuwanUser, kiuwanPasswd, kiuwanDomainId, kiuwanEndpoint);
 
             tl.debug(`[KW] Result of last delivery for ${projectName}: ${kiuwanDeliveryResult}`);
 
-            const kiuwanResultsPath = saveKiuwanResults(`${kiuwanDeliveryResult}`, "delivery");
+            const kiuwanResultsPath = kutils.saveKiuwanResults(`${kiuwanDeliveryResult}`, "delivery");
 
-            uploadKiuwanResults(kiuwanResultsPath, 'Kiuwan Delivery Results', "delivery");
+            kutils.uploadKiuwanResults(kiuwanResultsPath, 'Kiuwan Delivery Results', "delivery");
         }
 
         if (kiuwanRetCode === 0) {
             tl.setResult(tl.TaskResult.Succeeded, kiuwanMsg);
         }
         else {
-            if (auditFailed(kiuwanRetCode) && !failOnAudit) {
+            if (kutils.auditFailed(kiuwanRetCode) && !failOnAudit) {
                 tl.setResult(tl.TaskResult.Succeeded, kiuwanMsg);
             }
             else {
-                if (noFilesToAnalyze(kiuwanRetCode) && !failOnNoFiles) {
+                if (kutils.noFilesToAnalyze(kiuwanRetCode) && !failOnNoFiles) {
                     tl.setResult(tl.TaskResult.Succeeded, kiuwanMsg);
                 }
                 else {

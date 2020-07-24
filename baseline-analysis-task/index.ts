@@ -1,23 +1,18 @@
 import os = require('os');
 import url = require('url');
 import tl = require('vsts-task-lib/task');
-import {
-    buildKlaCommand, setAgentTempDir, setAgentToolsDir,
-    downloadInstallKla, runKiuwanLocalAnalyzer, getKiuwanRetMsg,
-    getLastAnalysisResults, saveKiuwanResults, uploadKiuwanResults,
-    isBuild
-} from 'kiuwan-common/utils';
+import * as kutils from '../kiuwan-common/utils';
 import { debug } from 'vsts-task-tool-lib';
 
 var osPlat: string = os.platform();
 var agentHomeDir = tl.getVariable('Agent.HomeDirectory');
 var agentTempDir = tl.getVariable('Agent.TempDirectory');
 if (!agentTempDir) {
-    agentTempDir = setAgentTempDir(agentHomeDir, osPlat);
+    agentTempDir = kutils.setAgentTempDir(agentHomeDir, osPlat);
 }
 var agentToolsDir = tl.getVariable('Agent.ToolsDirectory');
 if (!agentToolsDir) {
-    agentToolsDir = setAgentToolsDir(agentHomeDir, osPlat);
+    agentToolsDir = kutils.setAgentToolsDir(agentHomeDir, osPlat);
 }
 const toolName = 'KiuwanLocalAnalyzer';
 const toolVersion = '1.0.0';
@@ -143,7 +138,7 @@ async function run() {
         }
 
         let sourceDirectory = tl.getVariable('Build.SourcesDirectory');
-        if (!isBuild()) {
+        if (!kutils.isBuild()) {
             // This means the task is running from a release pipeline
             console.log(`[KW] This is a release.`);
             // We assume that the task is executed in a Release pipeline and construct the sourceDirectory 
@@ -167,10 +162,10 @@ async function run() {
         // We treat all agents equal now:
         // Check if the KLA is already installed in the Agent tools directory from a previosu task run
         // It will download and install it in the Agent Tools directory if not found
-        let klaInstallPath = await downloadInstallKla(kiuwanConnection, toolName, toolVersion, osPlat);
+        let klaInstallPath = await kutils.downloadInstallKla(kiuwanConnection, toolName, toolVersion, osPlat);
 
         // Get the appropriate kla command depending on the platform
-        kla = await buildKlaCommand(klaInstallPath, osPlat);
+        kla = await kutils.buildKlaCommand(klaInstallPath, osPlat);
 
         let advancedArgs = "";
         let overrideDotKiuwan: boolean = tl.getBoolInput('overridedotkiuwan');
@@ -225,25 +220,25 @@ async function run() {
 
         console.log(`[KW] Running Kiuwan analysis: ${kla} ${klaArgs}`);
 
-        let kiuwanRetCode: Number = await runKiuwanLocalAnalyzer(kla, klaArgs);
+        let kiuwanRetCode: Number = await kutils.runKiuwanLocalAnalyzer(kla, klaArgs);
         // let kiuwanRetCode = 0;
 
-        let kiuwanMsg: string = getKiuwanRetMsg(kiuwanRetCode);
+        let kiuwanMsg: string = kutils.getKiuwanRetMsg(kiuwanRetCode);
 
         if (kiuwanRetCode === 0) {
-            if (!isBuild()) {
+            if (!kutils.isBuild()) {
                 console.log("[KW] this is a release, we don't need to get the results");
                 tl.setResult(tl.TaskResult.Succeeded, kiuwanMsg + ", Results uploaded to Kiuwan. Go check!");
             }
             else {
                 let kiuwanEndpoint = `/saas/rest/v1/apps/${projectName}`;
-                let kiuwanAnalysisResult = await getLastAnalysisResults(kiuwanUrl, kiuwanUser, kiuwanPasswd, kiuwanDomainId, kiuwanEndpoint);
+                let kiuwanAnalysisResult = await kutils.getLastAnalysisResults(kiuwanUrl, kiuwanUser, kiuwanPasswd, kiuwanDomainId, kiuwanEndpoint);
 
                 tl.debug(`[KW] Result of last analysis for ${projectName}: ${kiuwanAnalysisResult}`);
 
-                const kiuwanResultsPath = saveKiuwanResults(`${kiuwanAnalysisResult}`, "baseline");
+                const kiuwanResultsPath = kutils.saveKiuwanResults(`${kiuwanAnalysisResult}`, "baseline");
 
-                uploadKiuwanResults(kiuwanResultsPath, 'Kiuwan Baseline Results', "baseline");
+                kutils.uploadKiuwanResults(kiuwanResultsPath, 'Kiuwan Baseline Results', "baseline");
 
                 tl.setResult(tl.TaskResult.Succeeded, kiuwanMsg + ", Results uploaded.");
             }

@@ -16,10 +16,19 @@
     "@types/q": "0.0.32"
   },
   "devDependencies": {
-    "typescript": "^2.7.2",
     "@types/node": "^9.4.6",
     "@types/q": "^1.0.7",
-    "vss-web-extension-sdk": "^4.125.2",
+    "typescript": "^2.7.2",
+    "vss-web-extension-sdk": "^4.126.2",
     "vsts-task-tool-lib": "^0.4.1"
-  }
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/victamakiuwan/tfs-vsts-extension.git"
+  },
+  "keywords": [],
+  "bugs": {
+    "url": "https://github.com/victamakiuwan/tfs-vsts-extension/issues"
+  },
+  "homepage": "https://github.com/victamakiuwan/tfs-vsts-extension#readme"
 }

@@ -1,5 +1,6 @@
 *.bak
 .git
+.vs
 *.vsix
 *.code-workspace
 node_modules
